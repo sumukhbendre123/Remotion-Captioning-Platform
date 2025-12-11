@@ -4,13 +4,6 @@ import { existsSync } from "fs";
 import path from "path";
 import OpenAI from "openai";
 
-// Disable body parser for file upload
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
