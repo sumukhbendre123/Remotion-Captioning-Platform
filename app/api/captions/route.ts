@@ -3,9 +3,12 @@ import { writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
 import path from "path";
 import OpenAI from "openai";
+import { createReadStream } from "fs";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: 60000, // 60 seconds timeout
+  maxRetries: 2, // Retry failed requests
 });
 
 export async function POST(request: NextRequest) {
@@ -75,43 +78,72 @@ export async function POST(request: NextRequest) {
     
     console.log("Generating captions with Whisper...");
     console.log("OpenAI API Key present:", !!process.env.OPENAI_API_KEY);
-
-    // Create a File-like object that OpenAI SDK can handle
-    const fileForWhisper = new File([buffer], file.name, { type: file.type });
+    console.log("OpenAI API Key (first 10 chars):", process.env.OPENAI_API_KEY?.substring(0, 10));
 
     let transcription;
     try {
+      // Use file stream for better compatibility with OpenAI SDK
+      const fileStream = createReadStream(videoPath) as any;
+      
       transcription = await openai.audio.transcriptions.create({
-        file: fileForWhisper,
+        file: fileStream,
         model: "whisper-1",
         response_format: "verbose_json",
         timestamp_granularities: ["word"],
       });
+      
+      console.log("Whisper API call successful");
     } catch (apiError: any) {
       console.error("OpenAI API Error:", apiError);
+      console.error("Error details:", {
+        message: apiError.message,
+        code: apiError.code,
+        status: apiError.status,
+        cause: apiError.cause,
+      });
       
       // Provide more specific error message
-      if (apiError.code === 'ECONNRESET' || apiError.cause?.code === 'ECONNRESET') {
+      if (apiError.code === 'ECONNRESET' || 
+          apiError.code === 'ENOTFOUND' || 
+          apiError.code === 'ETIMEDOUT' ||
+          apiError.cause?.code === 'ECONNRESET') {
         return NextResponse.json(
           {
             error: "Network connection error",
-            details: "Unable to connect to OpenAI API. Please check your internet connection and firewall settings. If using a proxy, ensure it's configured correctly.",
+            details: "Unable to connect to OpenAI API. Server may be experiencing network issues or OpenAI service may be unavailable.",
+            suggestion: "Please try again in a few moments. If the issue persists, contact support.",
           },
           { status: 500 }
         );
       }
       
-      if (apiError.status === 401) {
+      if (apiError.status === 401 || apiError.status === 403) {
         return NextResponse.json(
           {
             error: "Invalid API key",
-            details: "Your OpenAI API key is invalid. Please check your .env.local file.",
+            details: "Your OpenAI API key is invalid or expired. Please check your environment variables.",
           },
           { status: 500 }
         );
       }
+
+      if (apiError.status === 429) {
+        return NextResponse.json(
+          {
+            error: "Rate limit exceeded",
+            details: "OpenAI API rate limit reached. Please try again later.",
+          },
+          { status: 429 }
+        );
+      }
       
-      throw apiError;
+      return NextResponse.json(
+        {
+          error: "OpenAI API error",
+          details: apiError.message || "Unknown error occurred",
+        },
+        { status: 500 }
+      );
     }
 
     // Process transcription into caption format
