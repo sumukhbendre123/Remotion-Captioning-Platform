@@ -7,6 +7,7 @@
 **Solution:** Removed the `builds` property from `vercel.json`. Vercel auto-detects Next.js apps, so the `builds` property is not needed.
 
 **What was changed in `vercel.json`:**
+
 - ❌ Removed: `"version": 2` and `"builds"` array
 - ✅ Kept: `"functions"`, `"env"`, and `"regions"`
 

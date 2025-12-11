@@ -28,18 +28,21 @@ The `.env.local` file is in `.gitignore` and stays on your computer. You must ad
 Click **"Add Environment Variable"** and add these **THREE** variables:
 
 **Variable 1:**
+
 ```
 Key:   OPENAI_API_KEY
-Value: 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
+Value:
 ```
 
 **Variable 2:**
+
 ```
 Key:   USE_MOCK_CAPTIONS
 Value: false
 ```
 
 **Variable 3:**
+
 ```
 Key:   NODE_ENV
 Value: production
@@ -66,18 +69,21 @@ Value: production
 Add these three variables for **ALL ENVIRONMENTS** (Production, Preview, Development):
 
 **Variable 1:**
+
 ```
 Name:  OPENAI_API_KEY
-Value: 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
+Value:
 ```
 
 **Variable 2:**
+
 ```
 Name:  USE_MOCK_CAPTIONS
 Value: false
 ```
 
 **Variable 3:**
+
 ```
 Name:  NODE_ENV
 Value: production
@@ -99,10 +105,12 @@ After adding the variables, check if they're working:
 ### Method 1: Check Logs
 
 **Render:**
+
 - Go to "Logs" tab
 - Look for: `"OpenAI API Key present: true"`
 
 **Vercel:**
+
 - Go to "Deployments" → Select latest → "Runtime Logs"
 - Look for: `"OpenAI API Key present: true"`
 
@@ -111,6 +119,7 @@ After adding the variables, check if they're working:
 Visit: `https://your-app.onrender.com/api/test-env`
 
 Should show:
+
 ```json
 {
   "useMockCaptions": false,
@@ -124,20 +133,24 @@ Should show:
 ## Common Mistakes
 
 ### ❌ MISTAKE 1: Only setting in `.env.local`
+
 - `.env.local` is **NOT uploaded** to the server
 - It's in `.gitignore` for security
 - **Must** add in deployment platform dashboard
 
 ### ❌ MISTAKE 2: Typo in variable names
+
 - Must be exactly: `OPENAI_API_KEY` (not `OPENAI_KEY`)
 - Must be exactly: `USE_MOCK_CAPTIONS` (not `MOCK_CAPTIONS`)
 
 ### ❌ MISTAKE 3: Not redeploying after adding variables
+
 - Changes require a redeploy
 - Render: Auto-redeploys when you save
 - Vercel: Must manually redeploy or push new commit
 
 ### ❌ MISTAKE 4: Wrong environment selected (Vercel only)
+
 - Must select "Production" environment
 - OR select "All Environments"
 
@@ -146,6 +159,7 @@ Should show:
 ## Test After Setup
 
 1. **Go to your deployment URL:**
+
    - Render: `https://remotion-captioning-platform.onrender.com`
    - Vercel: `https://your-project.vercel.app`
 
@@ -154,6 +168,7 @@ Should show:
 3. **Click "Generate Captions"**
 
 4. **Should see:**
+
    ```
    ✓ Processing video
    ✓ Generating captions with AI
@@ -173,6 +188,7 @@ Should show:
 **Cause:** Environment variable not set or wrong name
 
 **Fix:**
+
 1. Double-check variable name: `OPENAI_API_KEY`
 2. Make sure you clicked "Save"
 3. Redeploy the app
@@ -184,6 +200,7 @@ Should show:
 **Unlikely** - Render/Vercel can reach OpenAI servers (unlike your local machine)
 
 **If it happens:**
+
 1. Check OpenAI status: https://status.openai.com
 2. Verify your API key is valid
 3. Check OpenAI usage limits
@@ -193,6 +210,7 @@ Should show:
 **Cause:** API key is expired or incorrect
 
 **Fix:**
+
 1. Get new key: https://platform.openai.com/api-keys
 2. Update environment variable
 3. Redeploy
@@ -202,6 +220,7 @@ Should show:
 **Cause:** Too many requests to OpenAI
 
 **Fix:**
+
 1. Wait a few minutes
 2. Check OpenAI usage dashboard
 3. Upgrade OpenAI plan if needed
@@ -213,7 +232,7 @@ Should show:
 Before testing:
 
 - [ ] Added `OPENAI_API_KEY` in deployment platform
-- [ ] Added `USE_MOCK_CAPTIONS=false` in deployment platform  
+- [ ] Added `USE_MOCK_CAPTIONS=false` in deployment platform
 - [ ] Added `NODE_ENV=production` in deployment platform
 - [ ] Clicked "Save" on environment variables
 - [ ] Redeployed the application
@@ -226,6 +245,7 @@ Before testing:
 ## Video Tutorial (If Needed)
 
 ### For Render:
+
 1. Dashboard → Your Service → "Environment" → "Add Environment Variable"
 2. Add all 3 variables
 3. Click "Save Changes"
@@ -233,6 +253,7 @@ Before testing:
 5. Test upload
 
 ### For Vercel:
+
 1. Dashboard → Project → "Settings" → "Environment Variables"
 2. Add all 3 variables (select "All Environments")
 3. Click "Save"

@@ -5,25 +5,30 @@
 ## ✅ FIXED: Build Errors
 
 **Error 1:** "Page config in app/api/captions/route.ts is deprecated"
+
 - **Fixed:** Removed deprecated `export const config`
 
 **Error 2:** "Self-reference dependency" in @remotion/bundler
+
 - **Fixed:** Disabled server-side video rendering (not compatible with serverless)
 
 ## ⚠️ Important Limitation
 
 **Video Export Feature:**
+
 - ❌ **NOT AVAILABLE** in serverless deployments (Render, Vercel, Netlify)
 - ✅ **Preview works** - You can still preview videos with captions
 - ✅ **Caption generation works** - AI transcription is fully functional
 
 **Why?** Server-side video rendering requires:
+
 - Full Node.js environment with FFmpeg
 - Persistent storage
 - High memory/CPU resources
 - Not available in serverless platforms
 
 **Alternatives:**
+
 1. **Use Remotion Lambda** - AWS Lambda-based rendering (~$0.01 per minute)
 2. **Deploy to VPS** - DigitalOcean, Linode, AWS EC2 with FFmpeg installed
 3. **Preview Only** - Use the app for previewing, export manually
@@ -37,6 +42,7 @@
 ## 🚀 Deploy to Render
 
 ### Prerequisites
+
 - GitHub repository pushed
 - OpenAI API key ready
 - Render account (free tier works)
@@ -52,6 +58,7 @@
 #### 2. Configure Build Settings
 
 **Basic Settings:**
+
 - **Name:** `remotion-captioning-platform` (or your choice)
 - **Region:** Choose closest to you
 - **Branch:** `main`
@@ -59,11 +66,13 @@
 - **Runtime:** `Node`
 
 **Build Command:**
+
 ```bash
 npm install; npm run build
 ```
 
 **Start Command:**
+
 ```bash
 npm start
 ```
@@ -81,11 +90,13 @@ NODE_ENV=production
 #### 4. Configure Plan
 
 **Free Tier:**
+
 - ✅ Suitable for testing
 - ❌ Spins down after 15 min of inactivity
 - ❌ Slower performance
 
 **Starter Plan ($7/month):**
+
 - ✅ Always on
 - ✅ Better performance
 - ✅ Recommended for production
@@ -122,6 +133,7 @@ services:
 ### Increase Timeout for Long Videos
 
 In your Render dashboard:
+
 1. Go to "Settings"
 2. Find "Health Check Grace Period"
 3. Increase to 300 seconds (5 minutes)
@@ -137,6 +149,7 @@ In your Render dashboard:
 **Problem:** Large video files timing out
 
 **Solutions:**
+
 1. Add file size validation (max 25MB)
 2. Implement chunked uploads
 3. Use background jobs for processing
@@ -146,6 +159,7 @@ In your Render dashboard:
 **Problem:** First request is slow after inactivity
 
 **Solutions:**
+
 1. Upgrade to paid plan (always on)
 2. Use a cron job to ping your app every 14 minutes
 3. Accept the limitation for testing
@@ -192,6 +206,7 @@ OpenAI API Error: Connection error
 ### Performance Benchmarks
 
 **Expected Times:**
+
 - Upload (5MB video): ~2-5 seconds
 - Caption generation: ~10-30 seconds
 - Preview load: ~1-2 seconds
@@ -200,15 +215,18 @@ OpenAI API Error: Connection error
 ## 💰 Cost Estimate
 
 ### Render Costs
+
 - **Free Tier:** $0 (with limitations)
 - **Starter:** $7/month
 - **Standard:** $25/month
 
 ### OpenAI Costs
+
 - **Whisper API:** $0.006 per minute
 - Example: 100 videos × 5 min = $3/month
 
 ### Total
+
 - **Development:** Free (Render Free + minimal OpenAI)
 - **Production:** ~$10-30/month (Render Starter/Standard + OpenAI)
 
@@ -225,6 +243,7 @@ Enable automatic deployments:
 ### Recommended Settings
 
 1. **Add CORS if needed:**
+
 ```typescript
 // In next.config.js
 async headers() {
@@ -240,13 +259,14 @@ async headers() {
 ```
 
 2. **Rate Limiting:**
-Install `express-rate-limit` for API protection
+   Install `express-rate-limit` for API protection
 
 3. **File Validation:**
+
 ```typescript
-const ALLOWED_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+const ALLOWED_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 if (!ALLOWED_TYPES.includes(file.type)) {
-  return NextResponse.json({ error: 'Invalid file type' }, { status: 400 });
+  return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
 }
 ```
 
@@ -267,6 +287,7 @@ Before going live:
 ## 🎉 Your App is Live!
 
 Once deployed, you'll get a URL like:
+
 ```
 https://remotion-captioning-platform.onrender.com
 ```
@@ -277,13 +298,13 @@ Share it, test it, and enjoy your AI-powered captioning platform! 🚀
 
 ## Common Issues & Solutions
 
-| Issue | Solution |
-|-------|----------|
-| Build timeout | Increase build timeout in settings |
-| Runtime memory error | Upgrade to higher plan |
-| API key not found | Add `OPENAI_API_KEY` in environment variables |
-| Slow cold starts | Upgrade from Free tier or use ping service |
-| File upload fails | Check file size limits (25MB max) |
+| Issue                | Solution                                      |
+| -------------------- | --------------------------------------------- |
+| Build timeout        | Increase build timeout in settings            |
+| Runtime memory error | Upgrade to higher plan                        |
+| API key not found    | Add `OPENAI_API_KEY` in environment variables |
+| Slow cold starts     | Upgrade from Free tier or use ping service    |
+| File upload fails    | Check file size limits (25MB max)             |
 
 ## Need Help?
 
