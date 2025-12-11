@@ -1,5 +1,33 @@
 # Render Deployment Guide
 
+# Render Deployment Guide
+
+## ✅ FIXED: Build Errors
+
+**Error 1:** "Page config in app/api/captions/route.ts is deprecated"
+- **Fixed:** Removed deprecated `export const config`
+
+**Error 2:** "Self-reference dependency" in @remotion/bundler
+- **Fixed:** Disabled server-side video rendering (not compatible with serverless)
+
+## ⚠️ Important Limitation
+
+**Video Export Feature:**
+- ❌ **NOT AVAILABLE** in serverless deployments (Render, Vercel, Netlify)
+- ✅ **Preview works** - You can still preview videos with captions
+- ✅ **Caption generation works** - AI transcription is fully functional
+
+**Why?** Server-side video rendering requires:
+- Full Node.js environment with FFmpeg
+- Persistent storage
+- High memory/CPU resources
+- Not available in serverless platforms
+
+**Alternatives:**
+1. **Use Remotion Lambda** - AWS Lambda-based rendering (~$0.01 per minute)
+2. **Deploy to VPS** - DigitalOcean, Linode, AWS EC2 with FFmpeg installed
+3. **Preview Only** - Use the app for previewing, export manually
+
 ## ✅ FIXED: Build Error
 
 **Error:** "Page config in app/api/captions/route.ts is deprecated"
