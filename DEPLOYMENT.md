@@ -1,5 +1,15 @@
 # Deployment Instructions
 
+## ✅ FIXED: Vercel Configuration Error
+
+**Error:** "The `functions` property cannot be used in conjunction with the `builds` property"
+
+**Solution:** Removed the `builds` property from `vercel.json`. Vercel auto-detects Next.js apps, so the `builds` property is not needed.
+
+**What was changed in `vercel.json`:**
+- ❌ Removed: `"version": 2` and `"builds"` array
+- ✅ Kept: `"functions"`, `"env"`, and `"regions"`
+
 ## Prerequisites
 
 - Node.js 18+ installed
