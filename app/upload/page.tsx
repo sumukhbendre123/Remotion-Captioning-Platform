@@ -221,7 +221,7 @@ export default function UploadPage() {
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🤖 AI-Powered</h3>
             <p className="text-sm text-gray-600">
-              Using Google Gemini 2.0 Flash for real-time transcription
+              Using Google Gemini 1.5 Flash for real-time transcription
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">

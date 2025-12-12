@@ -31,11 +31,12 @@ export async function POST(request: NextRequest) {
     // Convert buffer to base64 for Gemini
     const base64Data = buffer.toString('base64');
 
-    console.log('Sending to Gemini 2.0 Flash for audio transcription...');
+    console.log('Sending to Gemini 1.5 Flash for audio transcription...');
 
     try {
-      // Use Gemini 2.0 Flash model which supports audio transcription
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      // Use Gemini 1.5 Flash model - stable version with good free tier quota
+      // 15 RPM (requests per minute), 1 million TPM (tokens per minute), 1500 RPD (requests per day)
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
       // Create the prompt for audio transcription
       const prompt = `Listen to this audio/video and transcribe all spoken words exactly as you hear them.
@@ -98,7 +99,7 @@ Return ONLY the transcript text, nothing else.`;
         captions,
         fileName: file.name,
         transcription: transcriptText,
-        info: 'Real AI transcription powered by Gemini 2.0 Flash',
+        info: 'Real AI transcription powered by Gemini 1.5 Flash',
       });
 
     } catch (geminiError: any) {
