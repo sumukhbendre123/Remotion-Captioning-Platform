@@ -221,13 +221,13 @@ export default function UploadPage() {
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🤖 AI-Powered</h3>
             <p className="text-sm text-gray-600">
-              Using Google Gemini 1.5 Flash for real-time transcription
+              Using AssemblyAI for accurate real-time transcription with word-level timestamps
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🌏 Hinglish Support</h3>
             <p className="text-sm text-gray-600">
-              Supports English, Hindi, and Devanagari script
+              Supports English, Hindi, and mixed Hinglish speech
             </p>
           </div>
         </div>

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { AssemblyAI } from 'assemblyai';
 
-// Initialize Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+// Initialize AssemblyAI client
+const client = new AssemblyAI({
+  apiKey: process.env.ASSEMBLYAI_API_KEY || '',
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,9 +18,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if Gemini API key is configured
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn('GEMINI_API_KEY not found, using mock captions');
+    // Check if AssemblyAI API key is configured
+    if (!process.env.ASSEMBLYAI_API_KEY) {
+      console.warn('ASSEMBLYAI_API_KEY not found, using mock captions');
       return getMockCaptions(file.name);
     }
 
@@ -28,85 +30,51 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Convert buffer to base64 for Gemini
-    const base64Data = buffer.toString('base64');
-
-    console.log('Sending to Gemini 1.5 Flash for audio transcription...');
+    console.log('Sending to AssemblyAI for real-time transcription...');
 
     try {
-      // Use Gemini 1.5 Flash model - stable version with good free tier quota
-      // 15 RPM (requests per minute), 1 million TPM (tokens per minute), 1500 RPD (requests per day)
-      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+      // Transcribe the audio/video file with word-level timestamps
+      const transcript = await client.transcripts.transcribe({
+        audio: buffer,
+        language_code: 'en', // Auto-detect English/Hinglish
+      });
 
-      // Create the prompt for audio transcription
-      const prompt = `Listen to this audio/video and transcribe all spoken words exactly as you hear them.
+      // Check if transcription was successful
+      if (transcript.status === 'error') {
+        throw new Error(transcript.error || 'Transcription failed');
+      }
 
-Provide a complete word-for-word transcript. Include every single word spoken in the exact order.
-
-Preserve:
-- Natural speech patterns
-- Hinglish words (mix of Hindi and English)
-- Proper capitalization
-- Punctuation
-
-Return ONLY the transcript text, nothing else.`;
-
-      // Generate content with audio/video
-      const result = await model.generateContent([
-        {
-          inlineData: {
-            mimeType: file.type || 'video/mp4',
-            data: base64Data,
-          },
-        },
-        { text: prompt },
-      ]);
-
-      const response = await result.response;
-      const transcriptText = response.text();
-
-      console.log('Gemini transcription received:', transcriptText);
-
-      // Split transcript into words
-      const words = transcriptText
-        .trim()
-        .split(/\s+/)
-        .filter(w => w.length > 0);
-
-      if (words.length === 0) {
+      if (!transcript.words || transcript.words.length === 0) {
         throw new Error('No words transcribed from audio');
       }
 
-      // Estimate video duration based on file size
-      // Rough estimate: 1MB ≈ 10 seconds for compressed video
-      const estimatedDuration = Math.max((file.size / 1024 / 1024) * 10, 10);
-      
-      // Distribute words evenly across estimated duration
-      const timePerWord = estimatedDuration / words.length;
+      console.log('AssemblyAI transcription received:', transcript.text);
 
-      const wordsWithTimestamps = words.map((word, index) => ({
-        word: word,
-        start: index * timePerWord,
-        end: (index + 1) * timePerWord,
+      // Convert AssemblyAI word timestamps (milliseconds) to seconds
+      const wordsWithTimestamps = transcript.words.map(w => ({
+        word: w.text,
+        start: w.start / 1000, // Convert ms to seconds
+        end: w.end / 1000,
       }));
 
       // Convert word-level timestamps to caption segments
       const captions = groupWordsIntoCaptions(wordsWithTimestamps);
 
-      console.log(`Generated ${captions.length} caption segments from ${words.length} words`);
+      console.log(`Generated ${captions.length} caption segments from ${transcript.words.length} words`);
 
       return NextResponse.json({
         captions,
         fileName: file.name,
-        transcription: transcriptText,
-        info: 'Real AI transcription powered by Gemini 1.5 Flash',
+        transcription: transcript.text,
+        info: 'Real AI transcription powered by AssemblyAI (FREE tier)',
+        duration: transcript.audio_duration,
       });
 
-    } catch (geminiError: any) {
-      console.error('Gemini API error:', geminiError);
+    } catch (assemblyError: any) {
+      console.error('AssemblyAI API error:', assemblyError);
       
-      // If Gemini fails, fall back to enhanced mock captions
-      console.warn('Gemini failed, using enhanced mock captions');
+      // If AssemblyAI fails, fall back to enhanced mock captions
+      console.warn('AssemblyAI failed, using enhanced mock captions');
       const estimatedDuration = Math.max((file.size / 1024 / 1024) * 10, 10);
       return getEnhancedMockCaptions(file.name, estimatedDuration);
     }
