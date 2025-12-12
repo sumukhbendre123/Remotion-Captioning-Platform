@@ -24,20 +24,91 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing file:', file.name, 'Size:', file.size);
 
-    // NOTE: Gemini doesn't support audio/video transcription with timestamps
-    // For now, we'll use enhanced mock captions
-    // In production, you would need a dedicated speech-to-text service like:
-    // - AssemblyAI (free tier available)
-    // - Deepgram (pay as you go)
-    // - Google Cloud Speech-to-Text
-    
-    console.log('Generating smart captions...');
-    
-    // Calculate video duration estimate based on file size
-    // Rough estimate: 1MB ≈ 10 seconds for compressed video
-    const estimatedDuration = Math.min((file.size / 1024 / 1024) * 10, 60);
-    
-    return getEnhancedMockCaptions(file.name, estimatedDuration);
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Convert buffer to base64 for Gemini
+    const base64Data = buffer.toString('base64');
+
+    console.log('Sending to Gemini 2.0 Flash for audio transcription...');
+
+    try {
+      // Use Gemini 2.0 Flash model which supports audio transcription
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+
+      // Create the prompt for audio transcription
+      const prompt = `Listen to this audio/video and transcribe all spoken words exactly as you hear them.
+
+Provide a complete word-for-word transcript. Include every single word spoken in the exact order.
+
+Preserve:
+- Natural speech patterns
+- Hinglish words (mix of Hindi and English)
+- Proper capitalization
+- Punctuation
+
+Return ONLY the transcript text, nothing else.`;
+
+      // Generate content with audio/video
+      const result = await model.generateContent([
+        {
+          inlineData: {
+            mimeType: file.type || 'video/mp4',
+            data: base64Data,
+          },
+        },
+        { text: prompt },
+      ]);
+
+      const response = await result.response;
+      const transcriptText = response.text();
+
+      console.log('Gemini transcription received:', transcriptText);
+
+      // Split transcript into words
+      const words = transcriptText
+        .trim()
+        .split(/\s+/)
+        .filter(w => w.length > 0);
+
+      if (words.length === 0) {
+        throw new Error('No words transcribed from audio');
+      }
+
+      // Estimate video duration based on file size
+      // Rough estimate: 1MB ≈ 10 seconds for compressed video
+      const estimatedDuration = Math.max((file.size / 1024 / 1024) * 10, 10);
+      
+      // Distribute words evenly across estimated duration
+      const timePerWord = estimatedDuration / words.length;
+
+      const wordsWithTimestamps = words.map((word, index) => ({
+        word: word,
+        start: index * timePerWord,
+        end: (index + 1) * timePerWord,
+      }));
+
+      // Convert word-level timestamps to caption segments
+      const captions = groupWordsIntoCaptions(wordsWithTimestamps);
+
+      console.log(`Generated ${captions.length} caption segments from ${words.length} words`);
+
+      return NextResponse.json({
+        captions,
+        fileName: file.name,
+        transcription: transcriptText,
+        info: 'Real AI transcription powered by Gemini 2.0 Flash',
+      });
+
+    } catch (geminiError: any) {
+      console.error('Gemini API error:', geminiError);
+      
+      // If Gemini fails, fall back to enhanced mock captions
+      console.warn('Gemini failed, using enhanced mock captions');
+      const estimatedDuration = Math.max((file.size / 1024 / 1024) * 10, 10);
+      return getEnhancedMockCaptions(file.name, estimatedDuration);
+    }
 
   } catch (error: any) {
     console.error('Caption generation error:', error);
