@@ -14,8 +14,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useVideoStore } from "@/store/videoStore";
 import { VideoComposition } from "@/remotion/VideoComposition";
-import { Download, ArrowLeft, Loader2, Edit } from "lucide-react";
+import { Download, ArrowLeft, Loader2 } from "lucide-react";
 import { CaptionStyle } from "@/remotion/types";
+import { EditCaptionsDialog } from "@/components/EditCaptionsDialog";
 
 export default function PreviewPage() {
   const router = useRouter();
@@ -103,13 +104,6 @@ export default function PreviewPage() {
     } finally {
       setIsExporting(false);
     }
-  };
-
-  const handleEditCaptions = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Caption editing feature will be available soon",
-    });
   };
 
   if (!videoUrl || captions.length === 0) {
@@ -242,14 +236,7 @@ export default function PreviewPage() {
             <div className="bg-white rounded-lg shadow-lg p-6 space-y-3">
               <h3 className="font-semibold mb-4">Actions</h3>
 
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={handleEditCaptions}
-              >
-                <Edit className="mr-2 w-4 h-4" />
-                Edit Captions
-              </Button>
+              <EditCaptionsDialog />
 
               <Button
                 onClick={handleExport}
