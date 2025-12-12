@@ -10,7 +10,7 @@ Before you begin, ensure you have:
 
 - ✅ Node.js 18 or higher ([Download](https://nodejs.org))
 - ✅ npm or yarn package manager
-- ✅ OpenAI API key ([Get one](https://platform.openai.com/api-keys))
+- ✅ AssemblyAI API key ([Get FREE key](https://www.assemblyai.com/))
 - ✅ Git ([Download](https://git-scm.com))
 
 ## 📦 Installation Steps
@@ -32,7 +32,7 @@ This will install:
 
 - Next.js 14
 - Remotion v4
-- OpenAI SDK
+- AssemblyAI SDK (for real speech-to-text)
 - TailwindCSS
 - ShadCN UI
 - And all other dependencies
@@ -44,14 +44,22 @@ This will install:
 cp .env.example .env.local
 
 # Open .env.local in your favorite editor
-# Add your OpenAI API key
+# Add your AssemblyAI API key
 ```
 
 Edit `.env.local`:
 
 ```env
-OPENAI_API_KEY=sk-your-actual-openai-api-key-here
+ASSEMBLYAI_API_KEY=your-assemblyai-api-key-here
 ```
+
+**Get FREE AssemblyAI API Key:**
+1. Go to https://www.assemblyai.com/
+2. Sign up (no credit card required!)
+3. Copy API key from dashboard
+4. Paste into `.env.local`
+
+**FREE Tier:** 5 hours/month of transcription with word-level timestamps!
 
 ### Step 4: Start Development Server
 
@@ -113,7 +121,11 @@ Remotion-Captioning-Platform/
 
 ### Issue: "Invalid API key"
 
-**Solution:** Check your `.env.local` file has correct `OPENAI_API_KEY`
+**Solution:** Check your `.env.local` file has correct `ASSEMBLYAI_API_KEY`
+
+- Get free key from: https://www.assemblyai.com/
+- No credit card required
+- 5 hours/month free tier
 
 ### Issue: Port 3000 already in use
 
