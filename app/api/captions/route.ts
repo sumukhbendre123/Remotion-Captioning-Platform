@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-// Create OpenAI client with timeouts suitable for Vercel free tier (60s max)
+// Create OpenAI client optimized for Vercel's 60s limit
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 50000, // 50 seconds timeout (leave buffer for Vercel's 60s limit)
-  maxRetries: 2, // Reduce retries to fit in 60s window
+  timeout: 55000, // 55 seconds max (leave 5s buffer for processing)
+  maxRetries: 0, // No retries - use all time for one attempt
   dangerouslyAllowBrowser: false,
 });
 
-// Retry helper function for network errors (reduced for Vercel limits)
+// Simplified retry - only for network errors, not timeouts
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 2,
-  baseDelay: number = 1000
+  maxRetries: number = 1,
+  baseDelay: number = 500
 ): Promise<T> {
   let lastError: any;
   
@@ -23,19 +23,18 @@ async function retryWithBackoff<T>(
     } catch (error: any) {
       lastError = error;
       
-      // Check if it's a retryable error
+      // Only retry on network errors, NOT on timeouts
       const isRetryable = 
         error.code === 'ECONNRESET' ||
-        error.code === 'ETIMEDOUT' ||
         error.code === 'ENOTFOUND' ||
         error.cause?.code === 'ECONNRESET' ||
         error.message?.includes('Connection error');
       
-      if (!isRetryable || attempt === maxRetries - 1) {
+      // Don't retry timeouts or if it's the last attempt
+      if (!isRetryable || attempt === maxRetries - 1 || error.code === 'ETIMEDOUT') {
         throw error;
       }
       
-      // Shorter backoff for Vercel: 1s, 2s
       const delay = baseDelay * Math.pow(2, attempt);
       console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -145,29 +144,26 @@ export async function POST(request: NextRequest) {
 
     let transcription;
     try {
-      // Use retry logic with exponential backoff (reduced for Vercel 60s limit)
-      transcription = await retryWithBackoff(async () => {
-        console.log("Attempting Whisper API call...");
-        console.log("File details:", {
-          name: file.name,
-          type: file.type,
-          size: buffer.length,
-        });
-        
-        // Create a File object from buffer for OpenAI (serverless compatible)
-        const fileForWhisper = new File([buffer], file.name, { type: file.type });
-        
-        console.log("Calling OpenAI Whisper API...");
-        const result = await openai.audio.transcriptions.create({
-          file: fileForWhisper,
-          model: "whisper-1",
-          response_format: "verbose_json",
-          timestamp_granularities: ["word"],
-        });
-        
-        console.log("Whisper API call successful!");
-        return result;
-      }, 2, 1000); // 2 retries with 1 second base delay (faster for Vercel limits)
+      // Single attempt with full 55s timeout (no retries to maximize chance of success)
+      console.log("Attempting Whisper API call...");
+      console.log("File details:", {
+        name: file.name,
+        type: file.type,
+        size: buffer.length,
+      });
+      
+      // Create a File object from buffer for OpenAI (serverless compatible)
+      const fileForWhisper = new File([buffer], file.name, { type: file.type });
+      
+      console.log("Calling OpenAI Whisper API...");
+      transcription = await openai.audio.transcriptions.create({
+        file: fileForWhisper,
+        model: "whisper-1",
+        response_format: "verbose_json",
+        timestamp_granularities: ["word"],
+      });
+      
+      console.log("Whisper API call successful!");
       
     } catch (apiError: any) {
       console.error("OpenAI API Error:", apiError);
@@ -182,6 +178,21 @@ export async function POST(request: NextRequest) {
       
       // Log the full error object for debugging
       console.error("Full error object:", JSON.stringify(apiError, null, 2));
+      
+      // Handle timeout errors specifically
+      if (apiError.code === 'ETIMEDOUT' || apiError.message?.includes('timeout') || apiError.message?.includes('timed out')) {
+        console.error("Timeout error - video is too long for Vercel free tier");
+        return NextResponse.json(
+          {
+            error: "Processing timeout",
+            details: "Your video took too long to process. Vercel free tier has a 60-second limit, and your video exceeded this.",
+            suggestion: "Please use a SHORTER video (under 30-45 seconds recommended) or upgrade to Vercel Pro for 300-second timeout.",
+            fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
+            helpUrl: "https://vercel.com/docs/functions/serverless-functions/runtimes#max-duration",
+          },
+          { status: 504 }
+        );
+      }
       
       // Provide more specific error message
       if (apiError.code === 'ECONNRESET' || 
