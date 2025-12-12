@@ -100,13 +100,16 @@ export default function UploadPage() {
 
       const data = await response.json();
 
-      // Update store
-      setVideoUrl(data.videoPath);
+      // Create URL for the video file for preview
+      const videoUrl = URL.createObjectURL(videoFile);
+
+      // Update store with video URL and captions
+      setVideoUrl(videoUrl);
       setCaptions(data.captions);
 
       toast({
         title: "Captions Generated!",
-        description: `Successfully generated ${data.captions.length} caption segments`,
+        description: data.info || `Successfully generated ${data.captions.length} caption segments`,
       });
 
       // Navigate to preview
@@ -218,13 +221,13 @@ export default function UploadPage() {
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🤖 AI-Powered</h3>
             <p className="text-sm text-gray-600">
-              Using OpenAI Whisper for accurate transcription
+              Using Google Gemini 2.0 Flash for real-time transcription
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🌏 Hinglish Support</h3>
             <p className="text-sm text-gray-600">
-              Supports English and Devanagari script
+              Supports English, Hindi, and Devanagari script
             </p>
           </div>
         </div>
