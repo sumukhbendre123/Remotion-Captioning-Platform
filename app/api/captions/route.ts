@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
 import OpenAI from "openai";
-import { createReadStream } from "fs";
 
 // Create OpenAI client with aggressive retry settings
 const openai = new OpenAI({
@@ -75,19 +71,11 @@ export async function POST(request: NextRequest) {
 
     console.log("Processing file:", file.name, "Size:", file.size, "Type:", file.type);
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Save video file
+    // Convert file to buffer (serverless compatible - no disk writes)
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    const videoPath = path.join(uploadsDir, file.name);
-    await writeFile(videoPath, buffer);
-
-    console.log("Video saved to:", videoPath);
+    
+    console.log("File loaded into memory, ready for processing");
 
     // Check if we should use mock data (for testing when OpenAI is unavailable)
     const useMockData = process.env.USE_MOCK_CAPTIONS === 'true';
@@ -104,7 +92,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         captions: mockCaptions,
-        videoPath: `/uploads/${file.name}`,
+        videoData: buffer.toString('base64').substring(0, 100) + '...', // Return small preview
         transcription: "Mock transcription for testing",
         mock: true,
       });
@@ -123,10 +111,12 @@ export async function POST(request: NextRequest) {
       // Use retry logic with exponential backoff
       transcription = await retryWithBackoff(async () => {
         console.log("Attempting Whisper API call...");
-        const fileStream = createReadStream(videoPath) as any;
+        
+        // Create a File object from buffer for OpenAI (serverless compatible)
+        const fileForWhisper = new File([buffer], file.name, { type: file.type });
         
         const result = await openai.audio.transcriptions.create({
-          file: fileStream,
+          file: fileForWhisper,
           model: "whisper-1",
           response_format: "verbose_json",
           timestamp_granularities: ["word"],
@@ -265,7 +255,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       captions,
-      videoPath: `/uploads/${file.name}`,
+      fileName: file.name,
       transcription: transcription.text,
     });
   } catch (error: any) {
