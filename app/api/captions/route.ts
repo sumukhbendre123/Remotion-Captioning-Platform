@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 
-// Create OpenAI client with aggressive retry settings
+// Create OpenAI client with timeouts suitable for Vercel free tier (60s max)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 120000, // 120 seconds timeout (2 minutes)
-  maxRetries: 5, // Retry failed requests up to 5 times
+  timeout: 50000, // 50 seconds timeout (leave buffer for Vercel's 60s limit)
+  maxRetries: 2, // Reduce retries to fit in 60s window
   dangerouslyAllowBrowser: false,
 });
 
-// Retry helper function for network errors
+// Retry helper function for network errors (reduced for Vercel limits)
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelay: number = 2000
+  maxRetries: number = 2,
+  baseDelay: number = 1000
 ): Promise<T> {
   let lastError: any;
   
@@ -35,7 +35,7 @@ async function retryWithBackoff<T>(
         throw error;
       }
       
-      // Exponential backoff: 2s, 4s, 8s
+      // Shorter backoff for Vercel: 1s, 2s
       const delay = baseDelay * Math.pow(2, attempt);
       console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
@@ -70,6 +70,20 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Processing file:", file.name, "Size:", file.size, "Type:", file.type);
+
+    // Check file size (Vercel free tier with 60s timeout works best with videos under 25MB)
+    const maxSize = 25 * 1024 * 1024; // 25MB
+    if (file.size > maxSize) {
+      return NextResponse.json(
+        { 
+          error: "File too large",
+          details: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds limit of 25MB for Vercel free tier. Please use a shorter video or upgrade to Pro plan.`,
+          maxSizeMB: 25,
+          fileSizeMB: (file.size / 1024 / 1024).toFixed(2)
+        },
+        { status: 413 }
+      );
+    }
 
     // Convert file to buffer (serverless compatible - no disk writes)
     const bytes = await file.arrayBuffer();
@@ -108,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     let transcription;
     try {
-      // Use retry logic with exponential backoff
+      // Use retry logic with exponential backoff (reduced for Vercel 60s limit)
       transcription = await retryWithBackoff(async () => {
         console.log("Attempting Whisper API call...");
         
@@ -124,7 +138,7 @@ export async function POST(request: NextRequest) {
         
         console.log("Whisper API call successful!");
         return result;
-      }, 3, 3000); // 3 retries with 3 second base delay
+      }, 2, 1000); // 2 retries with 1 second base delay (faster for Vercel limits)
       
     } catch (apiError: any) {
       console.error("OpenAI API Error:", apiError);
