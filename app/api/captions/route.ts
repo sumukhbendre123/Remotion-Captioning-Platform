@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
 
     console.log('Sending to Gemini AI for transcription...');
 
-    // Use Gemini 1.5 Flash model
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Use Gemini 1.5 Flash Latest model
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     // Create the prompt for generating captions with timestamps
     const prompt = `Transcribe this video and provide word-level timestamps in JSON format.
