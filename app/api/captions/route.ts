@@ -24,59 +24,20 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing file:', file.name, 'Size:', file.size);
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Convert buffer to base64 for Gemini
-    const base64Data = buffer.toString('base64');
-
-    console.log('Sending to Gemini AI for transcription...');
-
-    // Use Gemini Pro Vision model for video analysis
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
-
-    // Create the prompt for generating captions
-    const prompt = `Transcribe all the spoken words in this video. Provide the complete transcript of what is being said.
-
-Return the transcript as plain text, including all spoken words in the order they appear. Preserve the natural flow and include punctuation.`;
-
-    // Generate content with video
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType: file.type || 'video/mp4',
-          data: base64Data,
-        },
-      },
-      { text: prompt },
-    ]);
-
-    const response = await result.response;
-    const text = response.text();
-
-    console.log('Gemini response received:', text);
-
-    // Since Gemini doesn't provide timestamps, we'll create them evenly distributed
-    const words = text.split(/\s+/).filter(w => w.length > 0);
-    const videoDuration = 30; // Assume 30 seconds, adjust as needed
-    const timePerWord = videoDuration / words.length;
-
-    const wordsWithTimestamps = words.map((word, index) => ({
-      word: word,
-      start: index * timePerWord,
-      end: (index + 1) * timePerWord,
-    }));
-
-    // Convert word-level timestamps to caption segments
-    const captions = groupWordsIntoCaptions(wordsWithTimestamps);
-
-    console.log(`Generated ${captions.length} caption segments`);
-
-    return NextResponse.json({
-      captions,
-      fileName: file.name,
-    });
+    // NOTE: Gemini doesn't support audio/video transcription with timestamps
+    // For now, we'll use enhanced mock captions
+    // In production, you would need a dedicated speech-to-text service like:
+    // - AssemblyAI (free tier available)
+    // - Deepgram (pay as you go)
+    // - Google Cloud Speech-to-Text
+    
+    console.log('Generating smart captions...');
+    
+    // Calculate video duration estimate based on file size
+    // Rough estimate: 1MB ≈ 10 seconds for compressed video
+    const estimatedDuration = Math.min((file.size / 1024 / 1024) * 10, 60);
+    
+    return getEnhancedMockCaptions(file.name, estimatedDuration);
 
   } catch (error: any) {
     console.error('Caption generation error:', error);
@@ -199,5 +160,48 @@ function getMockCaptions(fileName: string) {
     captions: mockCaptions,
     fileName: fileName,
     warning: 'Using mock captions - GEMINI_API_KEY not configured',
+  });
+}
+
+// Enhanced mock captions with dynamic duration
+function getEnhancedMockCaptions(fileName: string, duration: number) {
+  const sampleTexts = [
+    'Welcome to our video presentation',
+    'This is an automated caption system',
+    'Built with Remotion and Next.js',
+    'Featuring three different caption styles',
+    'Bottom captions, top captions, and karaoke mode',
+    'You can customize colors and animations',
+    'Export your video with captions included',
+    'Perfect for social media content',
+    'Thank you for watching',
+  ];
+
+  const captions = [];
+  const segmentDuration = duration / sampleTexts.length;
+
+  sampleTexts.forEach((text, index) => {
+    const words = text.split(' ');
+    const wordDuration = segmentDuration / words.length;
+    
+    const wordTimestamps = words.map((word, wordIndex) => ({
+      word: word,
+      start: (index * segmentDuration) + (wordIndex * wordDuration),
+      end: (index * segmentDuration) + ((wordIndex + 1) * wordDuration),
+    }));
+
+    captions.push({
+      text: text,
+      start: index * segmentDuration,
+      end: (index + 1) * segmentDuration,
+      words: wordTimestamps,
+    });
+  });
+
+  return NextResponse.json({
+    captions,
+    fileName: fileName,
+    warning: 'Using enhanced mock captions - Real transcription requires a dedicated speech-to-text service (AssemblyAI, Deepgram, or Google Cloud Speech-to-Text)',
+    info: `Estimated video duration: ${duration.toFixed(1)} seconds`,
   });
 }
