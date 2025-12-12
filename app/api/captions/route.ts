@@ -47,6 +47,11 @@ async function retryWithBackoff<T>(
 
 export async function POST(request: NextRequest) {
   try {
+    // Add CORS headers for proper JSON responses
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
       console.error("OpenAI API key is not configured");
@@ -55,23 +60,41 @@ export async function POST(request: NextRequest) {
           error: "OpenAI API key not configured",
           details: "Please add OPENAI_API_KEY to your .env.local file"
         },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
+    console.log("Parsing form data...");
     const formData = await request.formData();
     const file = formData.get("video") as File;
 
     if (!file) {
       return NextResponse.json(
         { error: "No video file provided" },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
     console.log("Processing file:", file.name, "Size:", file.size, "Type:", file.type);
 
-    // Check file size (Vercel free tier with 60s timeout works best with videos under 25MB)
+    // CRITICAL: Vercel has a 4.5MB request body limit on free tier!
+    // This is enforced BEFORE our code runs, causing a 403
+    const vercelMaxSize = 4.5 * 1024 * 1024; // 4.5MB
+    if (file.size > vercelMaxSize) {
+      console.error(`File too large: ${file.size} bytes exceeds Vercel's 4.5MB limit`);
+      return NextResponse.json(
+        { 
+          error: "File too large for Vercel free tier",
+          details: `Your file (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds Vercel's 4.5MB request limit. Please use a smaller/shorter video, or upgrade to Vercel Pro.`,
+          maxSizeMB: 4.5,
+          fileSizeMB: (file.size / 1024 / 1024).toFixed(2),
+          suggestion: "Compress your video or use a shorter clip (under 1 minute recommended)"
+        },
+        { status: 413, headers }
+      );
+    }
+
+    // Check file size (additional check for processing time)
     const maxSize = 25 * 1024 * 1024; // 25MB
     if (file.size > maxSize) {
       return NextResponse.json(

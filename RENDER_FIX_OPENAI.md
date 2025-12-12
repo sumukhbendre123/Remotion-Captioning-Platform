@@ -23,7 +23,7 @@ Click **"Add Environment Variable"** and add these THREE variables:
 #### Variable 1: OPENAI_API_KEY
 ```
 Key:   OPENAI_API_KEY
-Value: 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
+Value: YOUR-OPENAI-API-KEY-HERE
 ```
 
 #### Variable 2: USE_MOCK_CAPTIONS

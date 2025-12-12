@@ -32,7 +32,7 @@ npm install -g vercel
    Click "Environment Variables" section and add:
 
    ```
-   OPENAI_API_KEY = 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
+   OPENAI_API_KEY = YOUR-OPENAI-API-KEY-HERE
    ```
 
    ```
@@ -72,7 +72,7 @@ vercel
 
 # After deployment, add environment variables:
 vercel env add OPENAI_API_KEY production
-# Paste: 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
+# Paste: YOUR-OPENAI-API-KEY-HERE
 
 vercel env add USE_MOCK_CAPTIONS production
 # Enter: false
