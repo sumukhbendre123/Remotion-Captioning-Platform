@@ -137,10 +137,7 @@ export function EditCaptionsDialog() {
               {/* Timing */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label
-                    htmlFor={`caption-start-${index}`}
-                    className="text-xs"
-                  >
+                  <Label htmlFor={`caption-start-${index}`} className="text-xs">
                     Start Time (seconds)
                   </Label>
                   <Input

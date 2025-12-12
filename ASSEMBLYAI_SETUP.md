@@ -6,7 +6,7 @@
 ✅ **Word-level timestamps** - Perfect for captions  
 ✅ **Fast** - 2-3x realtime processing  
 ✅ **Accurate** - Industry-leading speech recognition  
-✅ **Hinglish support** - Understands mixed Hindi/English  
+✅ **Hinglish support** - Understands mixed Hindi/English
 
 **Gemini doesn't work** because it doesn't support video transcription through the API (404 errors for all models).
 
@@ -46,6 +46,7 @@
 Vercel will automatically redeploy your site (takes ~2-3 minutes).
 
 Or manually trigger:
+
 1. Go to **Deployments** tab
 2. Click "**...**" on latest deployment
 3. Click "**Redeploy**"
@@ -60,30 +61,33 @@ Or manually trigger:
 
 ## Free Tier Limits
 
-| Feature | Free Tier |
-|---------|-----------|
-| **Hours/month** | 5 hours |
-| **Word timestamps** | ✅ Yes |
-| **Credit card** | ❌ Not required |
-| **Processing speed** | 2-3x realtime |
-| **Max file size** | No limit |
-| **Hinglish** | ✅ Supported |
+| Feature              | Free Tier       |
+| -------------------- | --------------- |
+| **Hours/month**      | 5 hours         |
+| **Word timestamps**  | ✅ Yes          |
+| **Credit card**      | ❌ Not required |
+| **Processing speed** | 2-3x realtime   |
+| **Max file size**    | No limit        |
+| **Hinglish**         | ✅ Supported    |
 
 **Your 30-second video** = 0.5 minutes = You can process **600 videos/month FREE**!
 
 ## Troubleshooting
 
 ### "No captions generated"
+
 - Check: API key is set in Vercel environment variables
 - Check: Redeploy after adding API key
 - Check: Video has audible speech
 
 ### "Mock captions showing"
+
 - AssemblyAI key not set → Check Vercel dashboard
 - API key invalid → Get new key from AssemblyAI dashboard
 - Check Vercel logs for errors
 
 ### "Transcription is wrong"
+
 - AssemblyAI works best with:
   - Clear audio (no background noise)
   - English or Hinglish
@@ -91,12 +95,12 @@ Or manually trigger:
 
 ## Cost Comparison
 
-| Service | Free Tier | Cost After Free |
-|---------|-----------|-----------------|
-| **AssemblyAI** | 5 hrs/month | $0.00065/second ($0.039/min) |
-| **OpenAI Whisper** | ❌ None | $0.006/minute |
-| **Deepgram** | $200 credits | $0.0043/minute |
-| **Gemini** | ❌ Doesn't work | N/A |
+| Service            | Free Tier       | Cost After Free              |
+| ------------------ | --------------- | ---------------------------- |
+| **AssemblyAI**     | 5 hrs/month     | $0.00065/second ($0.039/min) |
+| **OpenAI Whisper** | ❌ None         | $0.006/minute                |
+| **Deepgram**       | $200 credits    | $0.0043/minute               |
+| **Gemini**         | ❌ Doesn't work | N/A                          |
 
 **AssemblyAI is the BEST choice** for this project! 🎉
 

@@ -109,7 +109,9 @@ export default function UploadPage() {
 
       toast({
         title: "Captions Generated!",
-        description: data.info || `Successfully generated ${data.captions.length} caption segments`,
+        description:
+          data.info ||
+          `Successfully generated ${data.captions.length} caption segments`,
       });
 
       // Navigate to preview
@@ -221,7 +223,8 @@ export default function UploadPage() {
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="font-semibold mb-2">🤖 AI-Powered</h3>
             <p className="text-sm text-gray-600">
-              Using AssemblyAI for accurate real-time transcription with word-level timestamps
+              Using AssemblyAI for accurate real-time transcription with
+              word-level timestamps
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
