@@ -125,10 +125,16 @@ export async function POST(request: NextRequest) {
       // Use retry logic with exponential backoff (reduced for Vercel 60s limit)
       transcription = await retryWithBackoff(async () => {
         console.log("Attempting Whisper API call...");
+        console.log("File details:", {
+          name: file.name,
+          type: file.type,
+          size: buffer.length,
+        });
         
         // Create a File object from buffer for OpenAI (serverless compatible)
         const fileForWhisper = new File([buffer], file.name, { type: file.type });
         
+        console.log("Calling OpenAI Whisper API...");
         const result = await openai.audio.transcriptions.create({
           file: fileForWhisper,
           model: "whisper-1",
@@ -146,8 +152,13 @@ export async function POST(request: NextRequest) {
         message: apiError.message,
         code: apiError.code,
         status: apiError.status,
+        type: apiError.type,
+        error: apiError.error,
         cause: apiError.cause,
       });
+      
+      // Log the full error object for debugging
+      console.error("Full error object:", JSON.stringify(apiError, null, 2));
       
       // Provide more specific error message
       if (apiError.code === 'ECONNRESET' || 
