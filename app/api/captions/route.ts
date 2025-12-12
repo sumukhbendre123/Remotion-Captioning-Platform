@@ -5,11 +5,49 @@ import path from "path";
 import OpenAI from "openai";
 import { createReadStream } from "fs";
 
+// Create OpenAI client with aggressive retry settings
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 60000, // 60 seconds timeout
-  maxRetries: 2, // Retry failed requests
+  timeout: 120000, // 120 seconds timeout (2 minutes)
+  maxRetries: 5, // Retry failed requests up to 5 times
+  dangerouslyAllowBrowser: false,
 });
+
+// Retry helper function for network errors
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 2000
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a retryable error
+      const isRetryable = 
+        error.code === 'ECONNRESET' ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'ENOTFOUND' ||
+        error.cause?.code === 'ECONNRESET' ||
+        error.message?.includes('Connection error');
+      
+      if (!isRetryable || attempt === maxRetries - 1) {
+        throw error;
+      }
+      
+      // Exponential backoff: 2s, 4s, 8s
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,17 +120,22 @@ export async function POST(request: NextRequest) {
 
     let transcription;
     try {
-      // Use file stream for better compatibility with OpenAI SDK
-      const fileStream = createReadStream(videoPath) as any;
+      // Use retry logic with exponential backoff
+      transcription = await retryWithBackoff(async () => {
+        console.log("Attempting Whisper API call...");
+        const fileStream = createReadStream(videoPath) as any;
+        
+        const result = await openai.audio.transcriptions.create({
+          file: fileStream,
+          model: "whisper-1",
+          response_format: "verbose_json",
+          timestamp_granularities: ["word"],
+        });
+        
+        console.log("Whisper API call successful!");
+        return result;
+      }, 3, 3000); // 3 retries with 3 second base delay
       
-      transcription = await openai.audio.transcriptions.create({
-        file: fileStream,
-        model: "whisper-1",
-        response_format: "verbose_json",
-        timestamp_granularities: ["word"],
-      });
-      
-      console.log("Whisper API call successful");
     } catch (apiError: any) {
       console.error("OpenAI API Error:", apiError);
       console.error("Error details:", {
@@ -106,14 +149,32 @@ export async function POST(request: NextRequest) {
       if (apiError.code === 'ECONNRESET' || 
           apiError.code === 'ENOTFOUND' || 
           apiError.code === 'ETIMEDOUT' ||
-          apiError.cause?.code === 'ECONNRESET') {
+          apiError.cause?.code === 'ECONNRESET' ||
+          apiError.message?.includes('Connection error')) {
+        
+        console.error("Network error detected - using fallback mock captions");
+        
+        // Return detailed error with suggestion to use mock mode
         return NextResponse.json(
           {
-            error: "Network connection error",
-            details: "Unable to connect to OpenAI API. Server may be experiencing network issues or OpenAI service may be unavailable.",
-            suggestion: "Please try again in a few moments. If the issue persists, contact support.",
+            error: "Network connection error to OpenAI",
+            details: "The server is unable to establish a stable connection to OpenAI API. This may be due to network restrictions or OpenAI service issues.",
+            suggestion: "Using mock captions as fallback. For production, please check network configuration or try again later.",
+            technicalDetails: {
+              errorCode: apiError.code || apiError.cause?.code,
+              errorMessage: apiError.message,
+              timestamp: new Date().toISOString(),
+            },
+            // Provide fallback mock captions
+            fallbackCaptions: [
+              { start: 0, end: 2.5, text: "Welcome to the Remotion Captioning Platform" },
+              { start: 2.5, end: 5.0, text: "OpenAI API is currently unavailable" },
+              { start: 5.0, end: 7.5, text: "These are fallback captions" },
+              { start: 7.5, end: 10.0, text: "Please try again later or contact support" },
+            ],
+            mock: true,
           },
-          { status: 500 }
+          { status: 503 } // Service Unavailable
         );
       }
       
@@ -141,6 +202,11 @@ export async function POST(request: NextRequest) {
         {
           error: "OpenAI API error",
           details: apiError.message || "Unknown error occurred",
+          technicalDetails: {
+            code: apiError.code,
+            status: apiError.status,
+            type: apiError.type,
+          }
         },
         { status: 500 }
       );
