@@ -183,12 +183,19 @@ export async function POST(request: NextRequest) {
       }
       
       if (apiError.status === 401 || apiError.status === 403) {
+        console.error("Authentication error - API key issue");
         return NextResponse.json(
           {
-            error: "Invalid API key",
-            details: "Your OpenAI API key is invalid or expired. Please check your environment variables.",
+            error: apiError.status === 401 ? "Invalid API key" : "Forbidden - Access Denied",
+            details: apiError.status === 401 
+              ? "Your OpenAI API key is invalid or expired." 
+              : "Access forbidden. Your API key may not have access to Whisper API, or your account may have insufficient credits.",
+            openaiError: apiError.message,
+            apiKeyPrefix: process.env.OPENAI_API_KEY?.substring(0, 20),
+            suggestion: "Check: 1) API key is correct, 2) Account has credits, 3) Whisper API is enabled",
+            helpUrl: "https://platform.openai.com/account/billing",
           },
-          { status: 500 }
+          { status: apiError.status }
         );
       }
 
@@ -197,6 +204,7 @@ export async function POST(request: NextRequest) {
           {
             error: "Rate limit exceeded",
             details: "OpenAI API rate limit reached. Please try again later.",
+            openaiError: apiError.message,
           },
           { status: 429 }
         );
