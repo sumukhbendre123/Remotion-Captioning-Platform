@@ -54,6 +54,7 @@ ASSEMBLYAI_API_KEY=your-assemblyai-api-key-here
 ```
 
 **Get FREE AssemblyAI API Key:**
+
 1. Go to https://www.assemblyai.com/
 2. Sign up (no credit card required!)
 3. Copy API key from dashboard

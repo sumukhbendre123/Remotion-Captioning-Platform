@@ -59,8 +59,8 @@ export default function PreviewPage() {
 
     try {
       toast({
-        title: "Exporting Video",
-        description: "This may take a few minutes...",
+        title: "Preparing Export",
+        description: "Generating captions file...",
       });
 
       const response = await fetch("/api/export", {
@@ -77,23 +77,31 @@ export default function PreviewPage() {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.details || "Export failed");
+        throw new Error(error.message || "Export failed");
       }
 
       const data = await response.json();
 
-      toast({
-        title: "Export Complete!",
-        description: "Your video is ready for download",
-      });
-
-      // Trigger download
+      // Download SRT file
       const link = document.createElement("a");
       link.href = data.downloadUrl;
-      link.download = `captioned-video-${Date.now()}.mp4`;
+      link.download = data.fileName || `captions-${Date.now()}.srt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      toast({
+        title: "Captions Downloaded!",
+        description: data.message || "SRT file downloaded successfully. Use it with your video editing software.",
+        duration: 5000,
+      });
+
+      // Show instructions dialog
+      if (data.instructions) {
+        setTimeout(() => {
+          alert(`📥 SRT File Downloaded!\n\n${data.instructions.title}:\n\n${data.instructions.steps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}\n\n💡 Recommended Free Tools:\n${data.instructions.alternativeOptions.map((opt: any) => `• ${opt.name}: ${opt.description}`).join('\n')}`);
+        }, 1000);
+      }
     } catch (error: any) {
       console.error("Export error:", error);
       toast({
@@ -155,6 +163,13 @@ export default function PreviewPage() {
                   }}
                   controls
                   loop
+                  autoPlay={false}
+                  clickToPlay
+                  spaceKeyToPlay
+                  moveToBeginningWhenEnded
+                  allowFullscreen
+                  showVolumeControls
+                  showPlaybackRateControl
                 />
               </div>
 

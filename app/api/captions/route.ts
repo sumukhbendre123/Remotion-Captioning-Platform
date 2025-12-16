@@ -96,12 +96,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle API key errors
-    if (error.message?.includes('API key') || error.message?.includes('GEMINI_API_KEY')) {
+    if (error.message?.includes('API key') || error.message?.includes('ASSEMBLYAI_API_KEY')) {
       return NextResponse.json(
         {
           error: 'API Configuration Error',
-          message: 'Gemini API key is not configured or invalid.',
-          suggestion: 'Get a free API key from https://makersuite.google.com/app/apikey and add it to Vercel environment variables as GEMINI_API_KEY.',
+          message: 'AssemblyAI API key is not configured or invalid.',
+          suggestion: 'Get a free API key from https://www.assemblyai.com/ and add it to Vercel environment variables as ASSEMBLYAI_API_KEY.',
           details: error.message,
         },
         { status: 401 }
@@ -113,8 +113,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error: 'API Quota Exceeded',
-          message: 'Gemini API quota exceeded. Free tier: 1500 requests/day.',
-          suggestion: 'Wait for quota reset or upgrade your Gemini API plan.',
+          message: 'AssemblyAI API quota exceeded. Free tier: 5 hours/month.',
+          suggestion: 'Wait for quota reset or upgrade your AssemblyAI plan.',
           details: error.message,
         },
         { status: 429 }
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       {
         error: 'Caption generation failed',
         message: error.message || 'An unexpected error occurred',
-        suggestion: 'Check if your video is under 30-45 seconds and under 4.5MB. Ensure GEMINI_API_KEY is set in Vercel environment variables.',
+        suggestion: 'Check if your video is under 30-45 seconds and under 4.5MB. Ensure ASSEMBLYAI_API_KEY is set in Vercel environment variables.',
       },
       { status: 500 }
     );
@@ -183,12 +183,12 @@ function getMockCaptions(fileName: string) {
       ],
     },
     {
-      text: 'Configure GEMINI_API_KEY for real captions',
+      text: 'Configure ASSEMBLYAI_API_KEY for real captions',
       start: 5,
       end: 8,
       words: [
         { word: 'Configure', start: 5, end: 5.7 },
-        { word: 'GEMINI_API_KEY', start: 5.7, end: 6.8 },
+        { word: 'ASSEMBLYAI_API_KEY', start: 5.7, end: 6.8 },
         { word: 'for', start: 6.8, end: 7 },
         { word: 'real', start: 7, end: 7.3 },
         { word: 'captions', start: 7.3, end: 8 },
@@ -199,7 +199,7 @@ function getMockCaptions(fileName: string) {
   return NextResponse.json({
     captions: mockCaptions,
     fileName: fileName,
-    warning: 'Using mock captions - GEMINI_API_KEY not configured',
+    warning: 'Using mock captions - ASSEMBLYAI_API_KEY not configured',
   });
 }
 
