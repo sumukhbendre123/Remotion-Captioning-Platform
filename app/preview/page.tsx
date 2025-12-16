@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Player } from "@remotion/player";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,19 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useVideoStore } from "@/store/videoStore";
 import { VideoComposition } from "@/remotion/VideoComposition";
-import { Download, ArrowLeft, Loader2 } from "lucide-react";
+import { Download, ArrowLeft, Loader2, Video } from "lucide-react";
 import { CaptionStyle } from "@/remotion/types";
 import { EditCaptionsDialog } from "@/components/EditCaptionsDialog";
+import { recordVideoFromPlayer } from "@/lib/render-client";
 
 export default function PreviewPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [playerKey, setPlayerKey] = useState(0);
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const [isRendering, setIsRendering] = useState(false);
+  const [renderProgress, setRenderProgress] = useState(0);
+  const [renderStage, setRenderStage] = useState("");
 
   const {
     videoUrl,
@@ -126,6 +131,74 @@ export default function PreviewPage() {
     }
   };
 
+  const handleRenderVideo = async () => {
+    if (!playerContainerRef.current) {
+      toast({
+        title: "Error",
+        description: "Player not ready",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsRendering(true);
+    setRenderProgress(0);
+    setRenderStage("Initializing...");
+
+    try {
+      toast({
+        title: "Rendering Video",
+        description: "This will record the video with captions. Please don't switch tabs!",
+        duration: 5000,
+      });
+
+      // Calculate video duration
+      const duration = captions[captions.length - 1]?.end || 30;
+
+      // Record the video
+      const videoBlob = await recordVideoFromPlayer(
+        playerContainerRef.current,
+        duration,
+        (progress) => {
+          setRenderProgress(progress.progress);
+          setRenderStage(progress.message);
+        }
+      );
+
+      // Download the video
+      const url = URL.createObjectURL(videoBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `captioned-video-${Date.now()}.webm`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Video Downloaded!",
+        description: "Your video with captions has been saved as WebM format. You can convert it to MP4 using VLC or HandBrake if needed.",
+        duration: 7000,
+      });
+
+      setTimeout(() => {
+        alert(`🎉 Video Downloaded Successfully!\n\nFormat: WebM (works on all modern players)\n\n💡 To convert to MP4:\n1. Open VLC Media Player\n2. Media → Convert/Save\n3. Add your WebM file\n4. Select MP4 format and convert\n\nThe video includes your captions permanently burned in!`);
+      }, 1000);
+
+    } catch (error: any) {
+      console.error("Render error:", error);
+      toast({
+        title: "Rendering Failed",
+        description: error.message || "Failed to render video. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRendering(false);
+      setRenderProgress(0);
+      setRenderStage("");
+    }
+  };
+
   if (!videoUrl || captions.length === 0) {
     return null;
   }
@@ -154,7 +227,7 @@ export default function PreviewPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Video Preview</h2>
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              <div ref={playerContainerRef} className="aspect-video bg-black rounded-lg overflow-hidden">
                 <Player
                   key={playerKey}
                   component={VideoComposition}
@@ -261,32 +334,67 @@ export default function PreviewPage() {
 
             {/* Actions */}
             <div className="bg-white rounded-lg shadow-lg p-6 space-y-3">
-              <h3 className="font-semibold mb-4">Actions</h3>
+              <h3 className="font-semibold mb-4">Export Options</h3>
 
               <EditCaptionsDialog />
 
+              {/* Render Complete Video */}
+              <Button
+                onClick={handleRenderVideo}
+                disabled={isRendering || isExporting}
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                size="lg"
+              >
+                {isRendering ? (
+                  <>
+                    <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                    Rendering {renderProgress.toFixed(0)}%...
+                  </>
+                ) : (
+                  <>
+                    <Video className="mr-2 w-5 h-5" />
+                    Render MP4 Video
+                  </>
+                )}
+              </Button>
+              {isRendering && (
+                <div className="space-y-1">
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${renderProgress}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-600 text-center">{renderStage}</p>
+                </div>
+              )}
+
+              {/* Export Subtitle Files */}
               <Button
                 onClick={handleExport}
-                disabled={isExporting}
+                disabled={isExporting || isRendering}
+                variant="outline"
                 className="w-full"
                 size="lg"
               >
                 {isExporting ? (
                   <>
                     <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                    Exporting...
+                    Exporting Subtitles...
                   </>
                 ) : (
                   <>
                     <Download className="mr-2 w-5 h-5" />
-                    Export Video
+                    Export Subtitles Only (SRT/VTT)
                   </>
                 )}
               </Button>
 
-              <p className="text-xs text-gray-500 text-center">
-                Export may take 2-5 minutes depending on video length
-              </p>
+              <div className="pt-2 space-y-2 text-xs text-gray-500">
+                <p className="font-medium text-gray-700">Which should I choose?</p>
+                <p>🎬 <strong>Render MP4 Video:</strong> Get a complete video file with captions burned in (recommended - works everywhere!)</p>
+                <p>📝 <strong>Export Subtitles:</strong> Get SRT/VTT files to use with your original video in players like VLC or MX Player</p>
+              </div>
             </div>
 
             {/* Caption List */}
