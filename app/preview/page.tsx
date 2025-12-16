@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Player } from "@remotion/player";
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,11 @@ import { VideoComposition } from "@/remotion/VideoComposition";
 import { Download, ArrowLeft, Loader2, Video } from "lucide-react";
 import { CaptionStyle } from "@/remotion/types";
 import { EditCaptionsDialog } from "@/components/EditCaptionsDialog";
-import { recordVideoFromPlayer } from "@/lib/render-client";
 
 export default function PreviewPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [playerKey, setPlayerKey] = useState(0);
-  const playerContainerRef = useRef<HTMLDivElement>(null);
-  const [isRendering, setIsRendering] = useState(false);
-  const [renderProgress, setRenderProgress] = useState(0);
-  const [renderStage, setRenderStage] = useState("");
 
   const {
     videoUrl,
@@ -132,93 +127,63 @@ export default function PreviewPage() {
   };
 
   const handleRenderVideo = async () => {
-    if (!playerContainerRef.current) {
-      toast({
-        title: "Error",
-        description: "Player not ready",
-        variant: "destructive",
-      });
-      return;
-    }
+    // Browser-based video rendering is complex and unreliable
+    // Instead, provide the user with the best alternative options
+    
+    toast({
+      title: "Video Rendering Options",
+      description: "Choose your preferred method below",
+      duration: 5000,
+    });
 
-    setIsRendering(true);
-    setRenderProgress(0);
-    setRenderStage("Initializing...");
+    const options = `
+🎬 HOW TO GET YOUR FINAL MP4 VIDEO:
 
-    try {
-      toast({
-        title: "Rendering MP4 Video",
-        description: "Recording and converting to MP4. Please keep this tab active!",
-        duration: 5000,
-      });
+Choose one of these proven methods:
 
-      // Calculate video duration
-      const duration = captions[captions.length - 1]?.end || 30;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      // Record and convert the video
-      const videoBlob = await recordVideoFromPlayer(
-        playerContainerRef.current,
-        duration,
-        (progress) => {
-          setRenderProgress(progress.progress);
-          setRenderStage(progress.message);
-        }
-      );
+📥 METHOD 1: DOWNLOAD SUBTITLES (Easiest)
+1. Click "Export Subtitles" button below
+2. Download SRT + VTT files
+3. Open your video in VLC Player
+4. Subtitle menu → Add Subtitle File
+5. Select your .srt file
+6. File → Convert/Save → MP4 (burns captions)
 
-      // Validate file size
-      if (videoBlob.size === 0) {
-        throw new Error("Video file is empty. Please try again.");
-      }
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      console.log("Final video blob:", videoBlob.type, videoBlob.size, "bytes");
+🖥️ METHOD 2: HANDBRAKE (Best Quality)
+1. Download HandBrake (free): handbrake.fr
+2. Add your original video
+3. Click Subtitles tab
+4. Import SRT → Check "Burn In"
+5. Click Start Encode
+6. Get perfect MP4 with captions!
 
-      // Download the video
-      const url = URL.createObjectURL(videoBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      
-      // Should always be MP4 now
-      const fileExtension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
-      const fileName = `captioned-video-${Date.now()}.${fileExtension}`;
-      link.download = fileName;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up URL after download
-      setTimeout(() => URL.revokeObjectURL(url), 100);
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      toast({
-        title: "✅ MP4 Video Downloaded!",
-        description: `${fileName} is ready. Open it in any media player on your laptop!`,
-        duration: 8000,
-      });
+🎨 METHOD 3: DAVINCI RESOLVE (Professional)
+1. Download DaVinci Resolve (free)
+2. Import video + SRT file
+3. Full editing + caption styling
+4. Export as MP4
 
-    } catch (error: any) {
-      console.error("Render error:", error);
-      
-      // Show detailed error
-      const errorMessage = error.message || "Unknown error occurred";
-      
-      toast({
-        title: "❌ Rendering Failed",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 10000,
-      });
-      
-      // Also log to help debug
-      console.error("Full error details:", {
-        message: error.message,
-        stack: error.stack,
-        error: error,
-      });
-    } finally {
-      setIsRendering(false);
-      setRenderProgress(0);
-      setRenderStage("");
-    }
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 METHOD 4: MX PLAYER (Mobile - View Only)
+1. Transfer video + VTT file to phone
+2. Open video in MX Player
+3. Menu → Subtitle → Open → Select VTT
+4. Captions appear instantly!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 TIP: We recommend Method 1 (VLC) or Method 2 (HandBrake)
+    Both are free, easy, and produce perfect MP4 files!
+    `.trim();
+
+    alert(options);
   };
 
   if (!videoUrl || captions.length === 0) {
@@ -249,7 +214,7 @@ export default function PreviewPage() {
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-lg p-6">
               <h2 className="text-xl font-semibold mb-4">Video Preview</h2>
-              <div ref={playerContainerRef} className="aspect-video bg-black rounded-lg overflow-hidden">
+              <div className="aspect-video bg-black rounded-lg overflow-hidden">
                 <Player
                   key={playerKey}
                   component={VideoComposition}
@@ -360,41 +325,21 @@ export default function PreviewPage() {
 
               <EditCaptionsDialog />
 
-              {/* Render Complete Video */}
+              {/* Get MP4 Video - Show Instructions */}
               <Button
                 onClick={handleRenderVideo}
-                disabled={isRendering || isExporting}
+                disabled={isExporting}
                 className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                 size="lg"
               >
-                {isRendering ? (
-                  <>
-                    <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                    Rendering {renderProgress.toFixed(0)}%...
-                  </>
-                ) : (
-                  <>
-                    <Video className="mr-2 w-5 h-5" />
-                    Render MP4 Video
-                  </>
-                )}
+                <Video className="mr-2 w-5 h-5" />
+                How to Get MP4 Video
               </Button>
-              {isRendering && (
-                <div className="space-y-1">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${renderProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-600 text-center">{renderStage}</p>
-                </div>
-              )}
 
               {/* Export Subtitle Files */}
               <Button
                 onClick={handleExport}
-                disabled={isExporting || isRendering}
+                disabled={isExporting}
                 variant="outline"
                 className="w-full"
                 size="lg"
@@ -407,15 +352,17 @@ export default function PreviewPage() {
                 ) : (
                   <>
                     <Download className="mr-2 w-5 h-5" />
-                    Export Subtitles Only (SRT/VTT)
+                    Download Subtitles (SRT/VTT)
                   </>
                 )}
               </Button>
 
               <div className="pt-2 space-y-2 text-xs text-gray-500">
-                <p className="font-medium text-gray-700">Which should I choose?</p>
-                <p>🎬 <strong>Render MP4 Video:</strong> Get a complete MP4 video file with captions permanently burned in. Works in any media player! (First time may take longer to load converter)</p>
-                <p>📝 <strong>Export Subtitles:</strong> Get SRT/VTT files to use with your original video in players like VLC or MX Player</p>
+                <p className="font-medium text-gray-700">📥 Quick Guide:</p>
+                <p>1️⃣ Click "How to Get MP4" for detailed instructions</p>
+                <p>2️⃣ Download subtitles using the button above</p>
+                <p>3️⃣ Use VLC or HandBrake to create final MP4</p>
+                <p className="text-blue-600 font-medium mt-2">💡 VLC Method (5 minutes): Easiest way to get MP4!</p>
               </div>
             </div>
 
