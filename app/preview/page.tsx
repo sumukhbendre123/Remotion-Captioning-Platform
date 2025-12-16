@@ -147,15 +147,15 @@ export default function PreviewPage() {
 
     try {
       toast({
-        title: "Rendering Video",
-        description: "This will record the video with captions. Please don't switch tabs!",
+        title: "Rendering MP4 Video",
+        description: "Recording and converting to MP4. Please keep this tab active!",
         duration: 5000,
       });
 
       // Calculate video duration
       const duration = captions[captions.length - 1]?.end || 30;
 
-      // Record the video
+      // Record and convert the video
       const videoBlob = await recordVideoFromPlayer(
         playerContainerRef.current,
         duration,
@@ -165,36 +165,54 @@ export default function PreviewPage() {
         }
       );
 
+      // Validate file size
+      if (videoBlob.size === 0) {
+        throw new Error("Video file is empty. Please try again.");
+      }
+
+      console.log("Final video blob:", videoBlob.type, videoBlob.size, "bytes");
+
       // Download the video
       const url = URL.createObjectURL(videoBlob);
       const link = document.createElement("a");
       link.href = url;
       
-      // Detect file type from blob
+      // Should always be MP4 now
       const fileExtension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
-      link.download = `captioned-video-${Date.now()}.${fileExtension}`;
+      const fileName = `captioned-video-${Date.now()}.${fileExtension}`;
+      link.download = fileName;
       
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      
+      // Clean up URL after download
+      setTimeout(() => URL.revokeObjectURL(url), 100);
 
       toast({
-        title: "Video Downloaded!",
-        description: `Your video with captions has been saved as ${fileExtension.toUpperCase()} format and is ready to open in any media player!`,
-        duration: 7000,
+        title: "✅ MP4 Video Downloaded!",
+        description: `${fileName} is ready. Open it in any media player on your laptop!`,
+        duration: 8000,
       });
-
-      setTimeout(() => {
-        alert(`🎉 Video Downloaded Successfully!\n\nFormat: ${fileExtension.toUpperCase()}\nFile: captioned-video-${Date.now()}.${fileExtension}\n\n✅ Opens in:\n• Windows Media Player\n• VLC Media Player\n• MX Player\n• Any video player on your laptop!\n\nThe video has your captions permanently burned in. Just double-click to play!`);
-      }, 1000);
 
     } catch (error: any) {
       console.error("Render error:", error);
+      
+      // Show detailed error
+      const errorMessage = error.message || "Unknown error occurred";
+      
       toast({
-        title: "Rendering Failed",
-        description: error.message || "Failed to render video. Please try again.",
+        title: "❌ Rendering Failed",
+        description: errorMessage,
         variant: "destructive",
+        duration: 10000,
+      });
+      
+      // Also log to help debug
+      console.error("Full error details:", {
+        message: error.message,
+        stack: error.stack,
+        error: error,
       });
     } finally {
       setIsRendering(false);
