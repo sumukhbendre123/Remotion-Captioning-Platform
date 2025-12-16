@@ -83,24 +83,36 @@ export default function PreviewPage() {
       const data = await response.json();
 
       // Download SRT file
-      const link = document.createElement("a");
-      link.href = data.downloadUrl;
-      link.download = data.fileName || `captions-${Date.now()}.srt`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const srtLink = document.createElement("a");
+      srtLink.href = data.downloadUrl;
+      srtLink.download = data.fileName || `captions-${Date.now()}.srt`;
+      document.body.appendChild(srtLink);
+      srtLink.click();
+      document.body.removeChild(srtLink);
+
+      // Also download VTT file (better mobile support)
+      if (data.vttDownloadUrl) {
+        setTimeout(() => {
+          const vttLink = document.createElement("a");
+          vttLink.href = data.vttDownloadUrl;
+          vttLink.download = data.vttFileName || `captions-${Date.now()}.vtt`;
+          document.body.appendChild(vttLink);
+          vttLink.click();
+          document.body.removeChild(vttLink);
+        }, 500);
+      }
 
       toast({
         title: "Captions Downloaded!",
-        description: data.message || "SRT file downloaded successfully. Use it with your video editing software.",
-        duration: 5000,
+        description: "Both SRT and VTT files downloaded. VTT works better on MX Player and mobile devices.",
+        duration: 6000,
       });
 
       // Show instructions dialog
       if (data.instructions) {
         setTimeout(() => {
-          alert(`📥 SRT File Downloaded!\n\n${data.instructions.title}:\n\n${data.instructions.steps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}\n\n💡 Recommended Free Tools:\n${data.instructions.alternativeOptions.map((opt: any) => `• ${opt.name}: ${opt.description}`).join('\n')}`);
-        }, 1000);
+          alert(`📥 Caption Files Downloaded!\n\n✅ SRT File: Desktop players, video editors\n✅ VTT File: MX Player, mobile devices, web browsers\n\n${data.instructions.title}:\n\n${data.instructions.steps.map((step: string, i: number) => `${i + 1}. ${step}`).join('\n')}\n\n💡 For MX Player:\n1. Open your video in MX Player\n2. Tap the screen → 3 dots menu → Subtitle\n3. Select "Open" and choose the .vtt file\n4. Captions will appear!\n\n💡 Recommended Free Tools:\n${data.instructions.alternativeOptions.map((opt: any) => `• ${opt.name}: ${opt.description}`).join('\n')}`);
+        }, 1500);
       }
     } catch (error: any) {
       console.error("Export error:", error);
