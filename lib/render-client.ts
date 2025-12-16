@@ -1,9 +1,106 @@
 "use client";
 
+import { FFmpeg } from "@ffmpeg/ffmpeg";
+import { fetchFile, toBlobURL } from "@ffmpeg/util";
+
 export interface RenderProgress {
   progress: number;
   stage: string;
   message: string;
+}
+
+let ffmpeg: FFmpeg | null = null;
+
+/**
+ * Initialize FFmpeg.wasm (only once)
+ */
+async function loadFFmpeg(onProgress?: (progress: RenderProgress) => void): Promise<FFmpeg> {
+  if (ffmpeg) return ffmpeg;
+
+  onProgress?.({
+    progress: 5,
+    stage: "loading",
+    message: "Loading video converter (first time only)...",
+  });
+
+  ffmpeg = new FFmpeg();
+  
+  // Load FFmpeg core
+  const baseURL = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, "text/javascript"),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, "application/wasm"),
+  });
+
+  onProgress?.({
+    progress: 10,
+    stage: "loaded",
+    message: "Video converter ready!",
+  });
+
+  return ffmpeg;
+}
+
+/**
+ * Convert WebM to MP4 using FFmpeg.wasm
+ */
+async function convertWebMToMP4(
+  webmBlob: Blob,
+  onProgress?: (progress: RenderProgress) => void
+): Promise<Blob> {
+  onProgress?.({
+    progress: 85,
+    stage: "converting",
+    message: "Converting to MP4 format...",
+  });
+
+  const ffmpegInstance = await loadFFmpeg(onProgress);
+
+  // Write input file to FFmpeg virtual filesystem
+  const inputData = await fetchFile(webmBlob);
+  await ffmpegInstance.writeFile("input.webm", inputData);
+
+  onProgress?.({
+    progress: 90,
+    stage: "converting",
+    message: "Processing video...",
+  });
+
+  // Convert WebM to MP4
+  await ffmpegInstance.exec([
+    "-i", "input.webm",
+    "-c:v", "libx264",      // H.264 video codec
+    "-preset", "fast",       // Fast encoding
+    "-crf", "22",            // Quality (lower = better, 18-28 range)
+    "-c:a", "aac",           // AAC audio codec
+    "-b:a", "128k",          // Audio bitrate
+    "-movflags", "+faststart", // Enable streaming
+    "output.mp4"
+  ]);
+
+  onProgress?.({
+    progress: 95,
+    stage: "finalizing",
+    message: "Finalizing MP4 file...",
+  });
+
+  // Read output file
+  const data = await ffmpegInstance.readFile("output.mp4");
+  
+  // Clean up
+  await ffmpegInstance.deleteFile("input.webm");
+  await ffmpegInstance.deleteFile("output.mp4");
+
+  // Convert to Blob
+  const mp4Blob = new Blob([data as any], { type: "video/mp4" });
+
+  onProgress?.({
+    progress: 100,
+    stage: "complete",
+    message: "MP4 video ready!",
+  });
+
+  return mp4Blob;
 }
 
 /**
@@ -78,21 +175,22 @@ export async function recordVideoFromPlayer(
       };
 
       mediaRecorder.onstop = async () => {
-        onProgress?.({
-          progress: 90,
-          stage: "finalizing",
-          message: "Converting to MP4...",
-        });
-
         const webmBlob = new Blob(chunks, { type: "video/webm" });
         
-        onProgress?.({
-          progress: 100,
-          stage: "complete",
-          message: "Video ready for download!",
-        });
-
-        resolve(webmBlob);
+        try {
+          // Convert WebM to MP4
+          const mp4Blob = await convertWebMToMP4(webmBlob, onProgress);
+          resolve(mp4Blob);
+        } catch (conversionError) {
+          console.error("MP4 conversion failed, returning WebM:", conversionError);
+          // Fallback to WebM if conversion fails
+          onProgress?.({
+            progress: 100,
+            stage: "complete",
+            message: "Video ready (WebM format)!",
+          });
+          resolve(webmBlob);
+        }
       };
 
       mediaRecorder.onerror = (error) => {

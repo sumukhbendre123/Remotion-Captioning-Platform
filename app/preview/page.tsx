@@ -169,7 +169,11 @@ export default function PreviewPage() {
       const url = URL.createObjectURL(videoBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `captioned-video-${Date.now()}.webm`;
+      
+      // Detect file type from blob
+      const fileExtension = videoBlob.type.includes("mp4") ? "mp4" : "webm";
+      link.download = `captioned-video-${Date.now()}.${fileExtension}`;
+      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -177,12 +181,12 @@ export default function PreviewPage() {
 
       toast({
         title: "Video Downloaded!",
-        description: "Your video with captions has been saved as WebM format. You can convert it to MP4 using VLC or HandBrake if needed.",
+        description: `Your video with captions has been saved as ${fileExtension.toUpperCase()} format and is ready to open in any media player!`,
         duration: 7000,
       });
 
       setTimeout(() => {
-        alert(`🎉 Video Downloaded Successfully!\n\nFormat: WebM (works on all modern players)\n\n💡 To convert to MP4:\n1. Open VLC Media Player\n2. Media → Convert/Save\n3. Add your WebM file\n4. Select MP4 format and convert\n\nThe video includes your captions permanently burned in!`);
+        alert(`🎉 Video Downloaded Successfully!\n\nFormat: ${fileExtension.toUpperCase()}\nFile: captioned-video-${Date.now()}.${fileExtension}\n\n✅ Opens in:\n• Windows Media Player\n• VLC Media Player\n• MX Player\n• Any video player on your laptop!\n\nThe video has your captions permanently burned in. Just double-click to play!`);
       }, 1000);
 
     } catch (error: any) {
@@ -392,7 +396,7 @@ export default function PreviewPage() {
 
               <div className="pt-2 space-y-2 text-xs text-gray-500">
                 <p className="font-medium text-gray-700">Which should I choose?</p>
-                <p>🎬 <strong>Render MP4 Video:</strong> Get a complete video file with captions burned in (recommended - works everywhere!)</p>
+                <p>🎬 <strong>Render MP4 Video:</strong> Get a complete MP4 video file with captions permanently burned in. Works in any media player! (First time may take longer to load converter)</p>
                 <p>📝 <strong>Export Subtitles:</strong> Get SRT/VTT files to use with your original video in players like VLC or MX Player</p>
               </div>
             </div>
