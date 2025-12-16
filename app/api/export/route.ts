@@ -97,12 +97,3 @@ function formatSRTTime(seconds: number): string {
   
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds.toString().padStart(3, '0')}`;
 }
-    return NextResponse.json(
-      {
-        error: "Export failed",
-        details: error.message,
-      },
-      { status: 500 }
-    );
-  }
-}
