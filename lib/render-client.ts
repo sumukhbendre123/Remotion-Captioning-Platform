@@ -139,8 +139,7 @@ async function convertWebMToMP4(
 }
 
 /**
- * Record video from Remotion Player using MediaRecorder API
- * This captures the actual rendered output including video + captions
+ * Record video from Remotion Player by playing it and capturing frames
  */
 export async function recordVideoFromPlayer(
   playerRef: HTMLDivElement,
@@ -152,70 +151,86 @@ export async function recordVideoFromPlayer(
       onProgress?.({
         progress: 5,
         stage: "setup",
-        message: "Initializing video recorder...",
+        message: "Setting up video capture...",
       });
 
-      // Find the video element within the player
-      const videoElement = playerRef.querySelector("video") as HTMLVideoElement;
-      const canvas = playerRef.querySelector("canvas") as HTMLCanvasElement;
+      // Find ALL canvas elements (Remotion uses multiple canvases)
+      const canvases = playerRef.querySelectorAll("canvas");
+      console.log("Found canvases:", canvases.length);
       
-      if (!videoElement && !canvas) {
-        throw new Error("Could not find video element or canvas in player");
+      if (canvases.length === 0) {
+        throw new Error("Could not find canvas in Remotion player. Make sure video is loaded.");
       }
 
-      // Get the canvas or create one from video
-      let captureCanvas: HTMLCanvasElement;
-      let ctx: CanvasRenderingContext2D;
+      // Use the last canvas (usually the final composed output)
+      const sourceCanvas = canvases[canvases.length - 1] as HTMLCanvasElement;
+      console.log("Using canvas:", sourceCanvas.width, "x", sourceCanvas.height);
 
-      if (canvas) {
-        captureCanvas = canvas;
-        ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-      } else {
-        captureCanvas = document.createElement("canvas");
-        captureCanvas.width = 1920;
-        captureCanvas.height = 1080;
-        ctx = captureCanvas.getContext("2d", { willReadFrequently: true })!;
-      }
+      // Create a new canvas for capturing
+      const captureCanvas = document.createElement("canvas");
+      captureCanvas.width = sourceCanvas.width || 1920;
+      captureCanvas.height = sourceCanvas.height || 1080;
+      const ctx = captureCanvas.getContext("2d", { willReadFrequently: false })!;
 
       onProgress?.({
         progress: 10,
         stage: "recording",
-        message: "Starting recording...",
+        message: "Starting video recording...",
       });
 
-      // Use canvas.captureStream() to record
+      // Create stream from capture canvas
       const stream = captureCanvas.captureStream(30); // 30 FPS
-
-      // Also capture audio if available
-      if (videoElement && (videoElement as any).captureStream) {
+      
+      // Try to capture audio from video element
+      const videoElement = playerRef.querySelector("video") as HTMLVideoElement;
+      if (videoElement) {
         try {
-          const audioStream = (videoElement as any).captureStream();
-          const audioTracks = audioStream.getAudioTracks();
-          audioTracks.forEach((track: MediaStreamTrack) => stream.addTrack(track));
+          const mediaStream = (videoElement as any).captureStream?.() || (videoElement as any).mozCaptureStream?.();
+          if (mediaStream) {
+            const audioTracks = mediaStream.getAudioTracks();
+            console.log("Audio tracks found:", audioTracks.length);
+            audioTracks.forEach((track: MediaStreamTrack) => stream.addTrack(track));
+          }
         } catch (e) {
           console.warn("Could not capture audio:", e);
         }
       }
 
       const chunks: Blob[] = [];
+      
+      // Try different codecs in order of preference
+      let mimeType = "video/webm;codecs=vp8"; // Most compatible
+      if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9";
+      }
+      
+      console.log("Using codec:", mimeType);
+
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: "video/webm;codecs=vp9",
-        videoBitsPerSecond: 5000000, // 5 Mbps
+        mimeType,
+        videoBitsPerSecond: 8000000, // 8 Mbps for better quality
       });
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
+          console.log("Data chunk received:", event.data.size, "bytes");
           chunks.push(event.data);
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log("Recording stopped, chunks:", chunks.length);
-        const webmBlob = new Blob(chunks, { type: "video/webm" });
-        console.log("WebM blob size:", webmBlob.size);
+        console.log("Recording stopped, total chunks:", chunks.length);
         
-        if (webmBlob.size === 0) {
-          reject(new Error("Recording produced empty video"));
+        if (chunks.length === 0) {
+          reject(new Error("Recording failed: No video data captured. The canvas might not be updating. Try refreshing the page and ensure the video is playing."));
+          return;
+        }
+
+        const webmBlob = new Blob(chunks, { type: "video/webm" });
+        console.log("WebM blob created, size:", webmBlob.size, "bytes");
+        
+        if (webmBlob.size === 0 || webmBlob.size < 1000) {
+          reject(new Error("Recording produced empty or too small video file. Please try again."));
           return;
         }
 
@@ -233,47 +248,68 @@ export async function recordVideoFromPlayer(
             throw new Error("Conversion produced empty MP4 file");
           }
           
-          console.log("Successfully converted to MP4, size:", mp4Blob.size);
+          console.log("Successfully converted to MP4, size:", mp4Blob.size, "bytes");
           resolve(mp4Blob);
         } catch (conversionError: any) {
           console.error("MP4 conversion failed:", conversionError);
-          reject(new Error(`Failed to convert to MP4: ${conversionError.message}. Please try again or contact support.`));
+          reject(new Error(`Failed to convert to MP4: ${conversionError.message}`));
         }
       };
 
       mediaRecorder.onerror = (error) => {
+        console.error("MediaRecorder error:", error);
         reject(new Error(`Recording failed: ${error}`));
       };
 
       // Start recording
+      console.log("Starting MediaRecorder...");
       mediaRecorder.start(100); // Collect data every 100ms
 
-      // Update progress during recording
-      const startTime = Date.now();
-      const progressInterval = setInterval(() => {
-        const elapsed = (Date.now() - startTime) / 1000;
-        const progress = Math.min((elapsed / durationInSeconds) * 80, 80);
-        
-        onProgress?.({
-          progress: 10 + progress,
-          stage: "recording",
-          message: `Recording... ${Math.round(elapsed)}s / ${Math.round(durationInSeconds)}s`,
-        });
+      // Continuously copy frames from source canvas to capture canvas
+      let frameCount = 0;
+      const fps = 30;
+      const frameDuration = 1000 / fps;
+      const totalFrames = Math.ceil(durationInSeconds * fps);
 
-        if (elapsed >= durationInSeconds) {
-          clearInterval(progressInterval);
+      const captureFrame = () => {
+        if (frameCount >= totalFrames) {
+          return;
         }
-      }, 500);
 
-      // Stop recording after duration
-      setTimeout(() => {
-        clearInterval(progressInterval);
-        mediaRecorder.stop();
-        stream.getTracks().forEach(track => track.stop());
-      }, durationInSeconds * 1000 + 500);
+        try {
+          // Copy current frame from source canvas
+          ctx.drawImage(sourceCanvas, 0, 0, captureCanvas.width, captureCanvas.height);
+          frameCount++;
+
+          // Update progress
+          const progress = Math.min((frameCount / totalFrames) * 65, 65);
+          onProgress?.({
+            progress: 10 + progress,
+            stage: "recording",
+            message: `Recording frame ${frameCount}/${totalFrames}...`,
+          });
+
+          // Schedule next frame
+          if (frameCount < totalFrames) {
+            setTimeout(captureFrame, frameDuration);
+          } else {
+            // Recording complete
+            console.log("All frames captured, stopping recorder...");
+            setTimeout(() => {
+              mediaRecorder.stop();
+              stream.getTracks().forEach(track => track.stop());
+            }, 500);
+          }
+        } catch (err) {
+          console.error("Frame capture error:", err);
+        }
+      };
+
+      // Start capturing frames
+      captureFrame();
 
     } catch (error) {
-      console.error("Recording error:", error);
+      console.error("Recording setup error:", error);
       reject(error);
     }
   });
