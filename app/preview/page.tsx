@@ -359,7 +359,7 @@ Choose one of these proven methods:
 
               <div className="pt-2 space-y-2 text-xs text-gray-500">
                 <p className="font-medium text-gray-700">📥 Quick Guide:</p>
-                <p>1️⃣ Click "How to Get MP4" for detailed instructions</p>
+                <p>1️⃣ Click &quot;How to Get MP4&quot; for detailed instructions</p>
                 <p>2️⃣ Download subtitles using the button above</p>
                 <p>3️⃣ Use VLC or HandBrake to create final MP4</p>
                 <p className="text-blue-600 font-medium mt-2">💡 VLC Method (5 minutes): Easiest way to get MP4!</p>
