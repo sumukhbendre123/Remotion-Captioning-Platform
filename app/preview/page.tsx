@@ -144,7 +144,7 @@ Choose one of these proven methods:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📥 METHOD 1: DOWNLOAD SUBTITLES (Easiest)
-1. Click "Export Subtitles" button below
+1. Click Export Subtitles button below
 2. Download SRT + VTT files
 3. Open your video in VLC Player
 4. Subtitle menu → Add Subtitle File
@@ -157,7 +157,7 @@ Choose one of these proven methods:
 1. Download HandBrake (free): handbrake.fr
 2. Add your original video
 3. Click Subtitles tab
-4. Import SRT → Check "Burn In"
+4. Import SRT → Check Burn In
 5. Click Start Encode
 6. Get perfect MP4 with captions!
 
